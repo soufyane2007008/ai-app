@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Ultra Studio Pro | التدريب المستمر والتوليد الشامل</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+        :root { --p: #6c5ce7; --s: #00b894; --d: #2d3436; --bg: #f0f2f5; --danger: #ff7675; --think: #f39c12; --blue: #0984e3; --deep: #8e44ad; --rgb1: #ff007f; --rgb2: #00f2fe; }
+        body { font-family: 'Tajawal', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--d); max-width: 1600px; margin: auto; }
+        
+        .grid-container { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+        @media (min-width: 900px) {
+            .grid-container { grid-template-columns: repeat(2, 1fr); }
+            .full-width { grid-column: 1 / -1; }
+        }
+
+        .card { background: white; border-radius: 18px; padding: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); border: 1px solid #eee; height: 100%; box-sizing: border-box; position: relative; overflow: hidden; }
+        .lux-border::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--rgb1), var(--rgb2), var(--p)); z-index: 1; }
+        
+        h2 { color: var(--p); font-size: 1.1rem; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; margin-top: 0; position: relative; z-index: 2; }
+        
+        #code-editor { width: 100%; height: 100px; background: #2d3436; color: #fab1a0; border-radius: 12px; padding: 10px; font-size: 12px; direction: ltr; border: none; box-sizing: border-box; }
+        #monitor, #img-monitor, #gen-monitor { background: #1e272e; color: #0be881; padding: 10px; border-radius: 10px; font-family: monospace; font-size: 12px; height: 120px; overflow-y: auto; margin: 10px 0; border-left: 4px solid var(--p); }
+        
+        .progress-box { background: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 12px; padding: 12px; margin-bottom: 10px; display: none; flex-direction: column; gap: 8px; font-size: 12px; }
+        .progress-stats { display: flex; justify-content: space-between; font-weight: bold; color: #555; flex-wrap: wrap; gap: 5px; }
+        .progress-bar { width: 100%; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; position: relative; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--p), var(--s)); width: 0%; transition: width 0.1s; }
+        .val-danger { color: var(--danger); } .val-success { color: var(--s); }
+
+        .img-preview-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+        .img-item-wrapper { position: relative; display: inline-block; border-radius: 8px; overflow: hidden; border: 2px solid transparent; transition: 0.3s; }
+        .img-item-wrapper:hover { border-color: var(--danger); }
+        .img-thumb { width: 60px; height: 60px; object-fit: cover; display: block; }
+        .btn-del-img { position: absolute; top: 2px; right: 2px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        .class-badge { background: #eee; padding: 2px 8px; border-radius: 20px; font-size: 10px; margin-right: 5px; }
+
+        .class-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .class-actions { display: flex; gap: 5px; }
+        .btn-sm { padding: 4px 8px; border-radius: 6px; font-size: 12px; cursor: pointer; border: none; color: white; transition: 0.2s; }
+        .btn-edit { background: var(--think); }
+        .btn-del { background: var(--danger); }
+
+        .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .up-box { border: 2px dashed #ddd; padding: 15px; text-align: center; border-radius: 12px; font-size: 12px; cursor: pointer; position: relative; background: #fafafa; transition: 0.3s; }
+        .up-box.active { border-color: var(--s); background: #e6fffb; color: var(--s); font-weight: bold; }
+        .up-box input { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
+        
+        #chat-win, #auto-chat-win { height: 450px; overflow-y: auto; background: #fdfdfd; border-radius: 15px; padding: 15px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #e0e0e0; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02); scroll-behavior: smooth; }
+        
+        @keyframes popIn { 0% { opacity: 0; transform: translateY(15px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        
+        .m { padding: 10px 14px; border-radius: 15px; font-size: 14px; max-width: 85%; position: relative; word-wrap: break-word; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; line-height: 1.5; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        
+        .u { align-self: flex-start; background: linear-gradient(135deg, var(--p), #574b90); color: white; border-top-right-radius: 2px; }
+        .a { align-self: flex-end; background: white; border: 1px solid #eee; border-top-left-radius: 2px; border-right: 4px solid var(--s); color: #2d3436; }
+        .gen-img-msg { align-self: flex-end; background: #000; padding: 10px; border-radius: 10px; border: 2px solid var(--rgb2); color: white; text-align: center; }
+        
+        .thought { align-self: flex-end; background: #fffdf8; border: 1px solid #fdebd0; border-top-left-radius: 2px; border-right: 4px solid var(--think); color: #b9770e; font-size: 13px; white-space: pre-wrap; width: 85%; }
+        
+        .deep-thought { align-self: flex-end; background: #1e272e; border: 1px solid #2f3640; border-top-left-radius: 2px; border-right: 4px solid var(--deep); color: #0be881; font-size: 13px; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; width: 95%; box-shadow: 0 4px 10px rgba(0,0,0,0.15); line-height: 1.8; }
+
+        .creative-thought { align-self: flex-end; background: #2d3436; border: 1px solid #fd79a8; border-top-left-radius: 2px; border-right: 4px solid #fd79a8; color: #fab1a0; font-size: 13px; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; width: 95%; box-shadow: 0 4px 10px rgba(253, 121, 168, 0.2); line-height: 1.8; }
+        
+        .typing-cursor::after { content: '▋'; animation: blink 1s step-end infinite; color: var(--think); }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        .chat-input-area { display: flex; gap: 10px; margin-top: 15px; align-items: center; background: white; padding: 10px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); flex-wrap: wrap; }
+        .btn-icon { background: #f1f2f6; color: #2d3436; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; border: none; overflow: hidden; position: relative; transition: 0.2s; }
+        .btn-icon:hover { background: #dfe4ea; transform: scale(1.05); }
+        .btn-icon input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: white; margin-top: 10px; transition: 0.2s; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+        .btn:active { transform: translateY(2px); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .btn-p { background: linear-gradient(135deg, var(--p), #574b90); } 
+        .btn-s { background: linear-gradient(135deg, var(--s), #009432); } 
+        .btn-stop { background: linear-gradient(135deg, var(--danger), #d63031); }
+        .btn-blue { background: linear-gradient(135deg, var(--blue), #0652dd); } 
+        .btn-deep { background: linear-gradient(135deg, var(--deep), #6c5ce7); }
+        .btn-rgb { background: linear-gradient(45deg, var(--rgb1), var(--rgb2), var(--p)); background-size: 200% 200%; animation: rgbAnim 3s ease infinite; }
+        
+        @keyframes rgbAnim { 0% {background-position: 0% 50%} 50% {background-position: 100% 50%} 100% {background-position: 0% 50%} }
+
+        .stats { display: flex; justify-content: space-around; background: #f8f9fa; border-radius: 10px; padding: 12px; font-size: 13px; margin: 10px 0; border: 1px solid #eee; }
+        
+        .chunk-ui { display: flex; gap: 10px; align-items: center; background: #fffcf5; padding: 12px; border-radius: 8px; border: 1px dashed var(--think); margin-bottom: 10px; flex-wrap: wrap;}
+
+        .radio-group { display: flex; gap: 15px; background: #f1f2f6; padding: 12px; border-radius: 10px; margin-bottom: 10px; justify-content: space-around; font-size: 14px; font-weight: bold; flex-wrap: wrap; }
+        .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; color: #2d3436; }
+        .radio-group input[type="radio"] { accent-color: var(--p); transform: scale(1.2); cursor: pointer; }
+
+        .toggle-switch { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; color: var(--think); cursor: pointer; background: #fffcf5; padding: 8px 12px; border-radius: 10px; border: 1px solid #fdebd0; }
+        .toggle-switch input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--think); cursor: pointer; }
+
+        #camera-wrapper { display: none; margin-bottom: 15px; background: #000; border-radius: 15px; overflow: hidden; position: relative; border: 3px solid var(--p); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        #live-video { width: 100%; height: auto; display: block; }
+        #canvas-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .cam-controls { position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 5px; z-index: 20; flex-wrap: wrap;}
+        .saved-gallery { display: flex; gap: 10px; overflow-x: auto; padding: 10px; background: #fdfdfd; border-radius: 10px; border: 1px solid #eee; display: none; margin-bottom: 15px; }
+        .saved-gallery img { height: 70px; border-radius: 8px; border: 2px solid var(--s); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .saved-gallery span { font-size: 10px; text-align: center; display: block; color: var(--d); font-weight: bold; }
+        .cam-badge { position: absolute; top: 10px; left: 10px; background: rgba(255,0,0,0.8); color: white; padding: 4px 8px; border-radius: 5px; font-size: 12px; z-index: 20; animation: blink 1s infinite; }
+        
+        .sys-info { font-size: 11px; color: #888; margin-top: 5px; text-align: left; direction: ltr; }
+        .prep-controls input, .prep-controls select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; }
+    </style>
+</head>
+<body onload="loadChatHistory()">
+
+<div class="grid-container">
+
+    <div class="card full-width" style="border: 2px dashed var(--s);">
+        <h2>⚙️ قسم تجهيزات معلومات التدريب على الصور</h2>
+        <div style="font-size: 12px; color: #555; margin-bottom: 10px;">
+            ارفع صورة أو مجموعة صور، حدد الردود وعدد العينات. سيتم تغيير أبعادها وقلبها آلياً وحقنها للتدريب أو حفظها كملف.
+        </div>
+        
+        <div class="upload-grid" style="grid-template-columns: 1fr; margin-bottom: 15px;">
+            <div class="up-box" onclick="document.getElementById('prep-upload').click()">
+                <input type="file" id="prep-upload" accept="image/*" multiple style="display:none" onchange="previewPrepImage(this)">
+                <span style="font-size: 14px; font-weight: bold; color: var(--p);">📥 ارفع الصورة أو مجموعة الصور الأصلية للتجهيز</span>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+            <div style="flex:1; min-width:120px;">
+                <img id="prep-img-preview" src="" style="width:100%; border-radius:8px; display:none; border:2px solid #ddd;">
+            </div>
+            <div class="prep-controls" style="flex:2; display:flex; flex-direction:column; gap:10px; min-width:250px;">
+                <input type="text" id="prep-class" placeholder="اسم التصنيف (مثلاً: قطة، سيارة)...">
+                <input type="number" id="prep-count" placeholder="كم عينة ثانوية تريد لكل صورة؟ (مثلاً: 50)" min="1" max="1000">
+                <textarea id="prep-responses" placeholder="ضع الردود الخاصة بهذه الصورة (مفصولة بفاصلة ,)" rows="3" style="border-radius:6px; border:1px solid #ddd; padding:8px; width: 100%; box-sizing: border-box;"></textarea>
+                
+                <div style="display:flex; gap:10px; flex-wrap: wrap;">
+                    <button class="btn btn-s" style="margin:0; padding:10px; flex:1;" onclick="processAndInject('visual')">💉 حقن في المختبر البصري</button>
+                    <button class="btn btn-rgb" style="margin:0; padding:10px; flex:1;" onclick="processAndInject('gen')">💉 حقن في التوليد</button>
+                    <button class="btn btn-blue" style="margin:0; padding:10px; flex:1;" onclick="downloadPrepJson()">💾 تحميل العينات JSON</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>⚡ مولد وحاقن الأكواد (JS Factory)</h2>
+        <textarea id="code-editor">
+// تم إزالة البيانات الوهمية لتعتمد على بياناتك الحقيقية فقط.
+// مثال لإضافة بيانات نصية حقيقية يدوياً:
+// pushData("ترحيب", ["مرحبا", "هلا بالذكاء", "السلام عليكم"], ["أهلاً بك! كيف يمكنني مساعدتك اليوم؟"]);
+// 
+log("🚀 تم حقن البيانات بنجاح!");
+        </textarea>
+        <button class="btn btn-s" onclick="runGen()">تشغيل وحقن البيانات</button>
+    </div>
+
+    <div class="card">
+        <h2>📂 رفع بيانات التدريب (JSON)</h2>
+        <div class="up-box" id="data-ui">
+            <input type="file" accept=".json" onchange="loadJSON(this)">
+            <span>📁 ارفع ملف التدريب (مثلاً: سلام.json)</span>
+        </div>
+        
+        <div class="stats">
+            <span>النيات: <b id="st-i">0</b></span>
+            <span>الجمل: <b id="st-p">0</b></span>
+        </div>
+        
+        <h2 style="margin-top: 20px;">🏗️ صانع النماذج الفارغة</h2>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <div style="flex:1;">
+                <label style="font-size:12px; display:block; margin-bottom:5px; color:#555; font-weight:bold;">الطبقات المخفية:</label>
+                <input type="number" id="blank-layers" value="2" min="1" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd; box-sizing:border-box;">
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:12px; display:block; margin-bottom:5px; color:#555; font-weight:bold;">الرؤوس (Nodes):</label>
+                <input type="number" id="blank-units" value="64" min="1" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd; box-sizing:border-box;">
+            </div>
+        </div>
+        <button class="btn btn-blue" onclick="createBlankModel()">🛠️ صنع وتحميل النموذج الفارغ (5 ملفات)</button>
+    </div>
+
+    <div class="card">
+        <h2>🧠 المختبر العصبي (التدريب المستمر للنصوص ∞)</h2>
+        <div class="chunk-ui">
+            <label style="font-size:12px; font-weight:bold; color:var(--think);">حجم الدفعة الواحدة:</label>
+            <input type="number" id="text-chunk-size" value="10" min="1" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd; text-align:center;">
+            <label style="font-size:12px; font-weight:bold; color:var(--danger); margin-right: 10px;">الخطأ المستهدف (التجاوز):</label>
+            <input type="number" id="text-target-loss" value="0.05" step="0.01" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd; text-align:center;">
+            <span id="text-chunk-info" style="font-size:11px; color:#555; background:#eee; padding:5px; border-radius:5px;">الدفعة: 0/0</span>
+        </div>
+        <div class="progress-box" id="train-ui">
+            <div class="progress-stats">
+                <span>الدورة (Epoch): <span id="ui-chunk" class="val-success">0</span></span>
+                <span>الخطأ الحقيقي: <span id="ui-loss" class="val-danger">--</span></span>
+                <span>الدقة: <span id="ui-acc" class="val-success">--</span></span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="ui-fill"></div></div>
+        </div>
+        <div id="monitor">جاهز للعمل... النموذج الموحد في انتظار البيانات.</div>
+        <div class="sys-info" id="sys-mem-text">Tensors: 0</div>
+        <button class="btn btn-p" id="start-btn" onclick="train()">🚀 بدء التعلم المستمر للنصوص</button>
+        <button class="btn btn-stop" id="stop-btn" style="display:none" onclick="stop()">🛑 إيقاف التعلم</button>
+    </div>
+
+    <div class="card">
+        <h2>🖼️ المختبر البصري (إدارة وتدريب الصور الحقيقي)</h2>
+        <div class="chunk-ui">
+            <label style="font-size:12px; font-weight:bold; color:var(--think);">حجم الدفعة الواحدة:</label>
+            <input type="number" id="chunk-size" value="7" min="1" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd; text-align:center;">
+            <label style="font-size:12px; font-weight:bold; color:var(--danger); margin-right: 10px;">الخطأ المستهدف:</label>
+            <input type="number" id="img-target-loss" value="0.1" step="0.01" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd; text-align:center;">
+            <span id="chunk-info" style="font-size:11px; color:#555; background:#eee; padding:5px; border-radius:5px;">الدفعة: 0/0</span>
+        </div>
+
+        <div class="progress-box" id="img-train-ui">
+            <div class="progress-stats">
+                <span>الصور: <span id="img-total-up" class="val-success">0</span></span>
+                <span>الدورة (Epoch): <span id="img-epoch-count" class="val-success">0</span></span>
+                <span>الخطأ: <span id="img-loss" class="val-danger">--</span></span>
+                <span>الدقة: <span id="img-acc" class="val-success">0%</span></span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="img-ui-fill"></div></div>
+        </div>
+
+        <div style="display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap;">
+            <input type="text" id="class-search" style="flex:1; min-width:150px; padding:8px; border-radius:8px; border:1px solid #ddd;" placeholder="🔍 ابحث عن تصنيف..." onkeyup="renderImageUI()">
+            <button class="btn btn-s" style="margin:0; width:auto; padding:8px;" onclick="addBulkImageClasses()">➕ تصنيفات متعددة</button>
+            <button class="btn btn-blue" style="margin:0; width:auto; padding:8px;" onclick="addImageClass()">➕ تصنيف</button>
+        </div>
+
+        <div id="image-classes-container" style="margin-bottom: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;"></div>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+            <button class="btn btn-blue" onclick="document.getElementById('bulk-img-in').click()">📤 رفع عينات</button>
+            <input type="file" id="bulk-img-in" multiple accept="image/*" style="display:none" onchange="bulkLoadImages(this)">
+            
+            <button class="btn" style="background: var(--think); margin-top:0;" onclick="openCameraForCapture()">📸 التقاط للكاميرا</button>
+        </div>
+        
+        <div id="img-monitor">في انتظار رفع أو التقاط الصور...</div>
+        <div class="sys-info" id="sys-mem-img">Tensors: 0</div>
+        <button class="btn btn-p" id="img-train-btn" onclick="trainImages()">🚀 بدء تدريب الصور</button>
+        <button class="btn btn-stop" id="img-stop-btn" style="display:none" onclick="stopImgTrain()">🛑 إيقاف التدريب</button>
+    </div>
+
+    <div class="card lux-border full-width">
+        <h2>🎨 مختبر التوليد البصري (تدريب النموذج على رسم الصور)</h2>
+        <div style="font-size: 13px; color: #555; margin-bottom: 10px;">
+            هذا القسم يتيح للنموذج تدريب شبكة عكسية (Autoencoder) قوية لتعلم إنشاء وتنسيق الصور من الصفر.<br>
+            <strong style="color:var(--rgb1)">كيفية الاستخدام في الدردشة:</strong> اكتب الأمر <code style="background:#eee; padding:2px 5px; border-radius:4px;">/تخيل [اسم التصنيف]</code>
+        </div>
+        
+        <div class="upload-grid" style="grid-template-columns: 1fr; margin-bottom: 15px;">
+            <div class="up-box" onclick="document.getElementById('gen-upload').click()">
+                <input type="file" id="gen-upload" multiple accept="image/*" style="display:none" onchange="loadGenImages(this)">
+                <span style="font-size: 14px; font-weight: bold; color: var(--deep);">📥 ارفع صوراً ليتدرب على أشكالها وحوافها (التوليد)</span>
+            </div>
+        </div>
+
+        <div class="chunk-ui">
+            <label style="font-size:12px; font-weight:bold; color:var(--think);">حجم الدفعة:</label>
+            <input type="number" id="gen-chunk-size" value="4" min="1" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd; text-align:center;">
+            <label style="font-size:12px; font-weight:bold; color:var(--danger); margin-right: 10px;">الخطأ المستهدف:</label>
+            <input type="number" id="gen-target-loss" value="0.05" step="0.01" style="width:60px; padding:5px; border-radius:5px; border:1px solid #ddd; text-align:center;">
+        </div>
+
+        <div class="progress-box" id="gen-train-ui">
+            <div class="progress-stats">
+                <span>دورة التوليد: <span id="gen-epoch" class="val-success">0</span></span>
+                <span>الخطأ الحقيقي (MSE): <span id="gen-loss" class="val-danger">--</span></span>
+            </div>
+        </div>
+        <div id="gen-monitor">في انتظار بدء التدريب التوليدي...</div>
+        <button class="btn btn-rgb" id="gen-train-btn" onclick="trainGeneratorModel()">🚀 بدء تدريب التوليد البصري الحقيقي</button>
+        <button class="btn btn-stop" id="gen-stop-btn" style="display:none" onclick="stopGenTrain()">🛑 إيقاف التوليد</button>
+    </div>
+
+    <div class="card full-width">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 15px;">
+            <h2 style="margin: 0; border: none; padding: 0;">🤖 التدريب التلقائي المستمر المتسلسل (آمن ومستقر)</h2>
+            <button class="btn-sm btn-del" onclick="clearAutoChat()" style="font-size: 13px; padding: 6px 12px;">🗑️ مسح دردشة التحميل</button>
+        </div>
+        
+        <div class="radio-group">
+            <label><input type="radio" name="auto-mode" id="mode-both" checked> 🔀 صور ونصوص</label>
+            <label><input type="radio" name="auto-mode" id="mode-img"> 🖼️ صور فقط</label>
+            <label><input type="radio" name="auto-mode" id="mode-text"> 💬 نصوص فقط</label>
+        </div>
+        
+        <div class="stats">
+            <span>✅ مكافآت: <b id="auto-reward" class="val-success">0</b></span>
+            <span>❌ عقوبات: <b id="auto-penalty" class="val-danger">0</b></span>
+        </div>
+        <div id="auto-chat-win">
+            <div style="text-align:center; color:#888; font-size:12px; margin-top: 10px;">اختر وضع التدريب واضغط بدء للعمل في الخلفية باستمرار...</div>
+        </div>
+        <div class="sys-info" id="sys-mem-auto">System Status: OK</div>
+        <button class="btn btn-s" id="auto-start-btn" onclick="startAutoTrain()">🚀 تشغيل التدريب التلقائي المستمر</button>
+        <button class="btn btn-stop" id="auto-stop-btn" style="display:none" onclick="stopAutoTrain()">🛑 إيقاف التدريب التلقائي</button>
+    </div>
+
+    <div class="card full-width">
+        <h2>💬 محاكي الدردشة الحية والتفكير العميق والتوليد</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size:12px; color:#888;">الدردشة الحية، التحليل العميق (صور، وجوه، كائنات، نصوص)، وتقييم الردود</span>
+            <button class="btn-sm btn-del" onclick="clearChat()">مسح الدردشة</button>
+        </div>
+
+        <div id="camera-wrapper">
+            <div class="cam-badge">● LIVE</div>
+            <video id="live-video" autoplay playsinline></video>
+            <canvas id="canvas-overlay"></canvas>
+            <div class="cam-controls">
+                <button class="btn-sm btn-s" onclick="switchCamera()">🔄 تبديل</button>
+                <button class="btn-sm btn-blue" id="btn-cam-capture" style="display:none;" onclick="captureSingleImage()">✅ التقاط الصورة للصنف</button>
+                <button class="btn-sm btn-rgb" id="btn-cam-to-chat" style="display:none;" onclick="captureCameraToChat()">👁️ إرسال للدردشة (تحليل عميق)</button>
+                <button class="btn-sm btn-stop" onclick="closeCamera()">إيقاف</button>
+            </div>
+        </div>
+        <div id="saved-gallery" class="saved-gallery"></div>
+
+        <div id="chat-win"></div>
+        <div class="chat-input-area">
+            <label class="btn-icon" style="background:#a29bfe; color:white;" title="إرفاق صور لا محدودة للتحليل العميق">
+                ➕ <input type="file" accept="image/*" multiple onchange="handleChatFiles(this)">
+            </label>
+            <label class="btn-icon" title="إرفاق صورة واحدة للتحليل">
+                📷 <input type="file" accept="image/*" onchange="handleChatFiles(this)">
+            </label>
+            
+            <button class="btn-icon" style="background:#ffeaa7; font-size: 22px;" title="فتح الكاميرا المباشرة للتعرف" onclick="toggleCamera(false)">🎦</button>
+
+            <button class="btn-icon" style="background:#81ecec; font-size: 22px;" title="توليد صورة (صانع الصور)" onclick="triggerImageMaker()">🎨</button>
+
+            <input type="text" id="chat-in" style="flex:1; padding:15px; border-radius:12px; border:1px solid #ddd; outline:none; font-family:'Tajawal';" placeholder="اكتب، التقط صور لامحدودة، أو جرب /تخيل [صنف]..." onkeypress="if(event.key === 'Enter') ask()">
+            
+            <label class="toggle-switch">
+                <input type="checkbox" id="deep-think-toggle">
+                تفكير عميق 🧠
+            </label>
+
+            <label class="toggle-switch" style="border-color: #fd79a8; background: #ffeaa7;">
+                <input type="checkbox" id="creative-think-toggle">
+                تفكير إبداعي 💡
+            </label>
+
+            <button class="btn btn-p" style="width:100px; margin:0; font-size:14px;" onclick="ask()">إرسال</button>
+        </div>
+    </div>
+
+    <div class="card full-width">
+        <h2>💾 إدارة النماذج الموحدة المرفوعة والمستقبلية (5 ملفات)</h2>
+        <div class="upload-grid">
+            <div class="up-box" id="ui-j"><input type="file" id="f-j" accept=".json" onchange="act('ui-j')"><span>🧠 1: model.json (النموذج)</span></div>
+            <div class="up-box" id="ui-b"><input type="file" id="f-b" accept=".bin" onchange="act('ui-b')"><span>⚖️ 2: weights.bin (الأوزان)</span></div>
+            <div class="up-box" id="ui-v"><input type="file" id="f-v" accept=".json" onchange="act('ui-v')"><span>📑 3: vocab.json (القاموس)</span></div>
+            <div class="up-box" id="ui-t-d" style="border-color:var(--think);"><input type="file" id="f-t-d" accept=".json" onchange="loadStateFile(this, 'text')"><span>💬 4: text_data.json (النصوص)</span></div>
+            <div class="up-box" id="ui-i-d" style="border-color:var(--s);"><input type="file" id="f-i-d" accept=".json" onchange="loadStateFile(this, 'img')"><span>🖼️ 5: image_data.json (الصور)</span></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-p" onclick="restore()">📥 استعادة وتحميل النموذج بالكامل</button>
+            <button class="btn" style="background:#636e72" onclick="downloadAllFiles()">📤 حفظ النماذج والملفات الخمسة</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+let unifiedModel; 
+let generatorModel; 
+let words = []; 
+let classes = []; 
+let imgClasses = []; 
+let unifiedClasses = []; 
+let intents = []; 
+let imgData = []; 
+let imgIdCounter = 0;
+
+let isStop = true;
+let isImgStop = true; 
+let isGenStop = true;
+let currentChatImageFiles = [];
+
+let currentTextChunkIndex = 0;
+let textEpochCount = 0;
+let textDataQueue = []; 
+
+let currentImgChunkIndex = 0;
+let imgEpochCount = 0;
+
+let isAutoTrainStop = true;
+let autoRewardCount = 0;
+let autoPenaltyCount = 0;
+let autoTextIndex = 0;
+let autoImgIndex = 0;
+
+let liveStream = null;
+let isCamActive = false;
+let currentFacingMode = 'environment';
+let faceDetector = null;
+let objectDetector = null; // تمت الإضافة للتعرف على الحيوانات والجماد
+let lastSeenClass = "";
+let lastSeenTime = 0;
+let captureTargetClass = null;
+let analysisInterval = 0;
+let prepCurrentFiles = [];
+
+setInterval(() => {
+    const mem = tf.memory();
+    document.getElementById('sys-mem-text').innerText = `Tensors: ${mem.numTensors} | Mem: ${(mem.numBytes / 1024 / 1024).toFixed(2)} MB`;
+    document.getElementById('sys-mem-img').innerText = `Tensors: ${mem.numTensors} | Mem: ${(mem.numBytes / 1024 / 1024).toFixed(2)} MB`;
+    document.getElementById('sys-mem-auto').innerText = `System Tensors: ${mem.numTensors}`;
+}, 2000);
+
+function tokenizeText(text) { return text.toLowerCase().trim().match(/[\u0600-\u06FF]+|[a-zA-Z]+|\d+|[^\s\w]/g) || []; }
+
+function getInputsArray(textT, imgT) {
+    if (unifiedModel && unifiedModel.inputNames && unifiedModel.inputNames.length > 1) {
+        if (unifiedModel.inputNames[0].includes('img')) return [imgT, textT];
+    }
+    return [textT, imgT];
+}
+
+function log(m) { const mon = document.getElementById('monitor'); mon.innerHTML += `<div>> ${m}</div>`; mon.scrollTop = mon.scrollHeight; }
+function imgLog(m) { const mon = document.getElementById('img-monitor'); mon.innerHTML += `<div>> ${m}</div>`; mon.scrollTop = mon.scrollHeight; }
+function genLog(m) { const mon = document.getElementById('gen-monitor'); mon.innerHTML += `<div>> ${m}</div>`; mon.scrollTop = mon.scrollHeight; }
+function act(id) { document.getElementById(id).classList.add('active'); }
+
+function pushData(tag, patterns, responses) {
+    // تم إضافة الكلاس (tag) لضمان تسجيله في النموذج عند رفع ملف JSON لتجنب تجاهله
+    if (!classes.includes(tag)) classes.push(tag); 
+    
+    let existing = intents.find(i => i.tag === tag);
+    if(existing) {
+        existing.patterns = [...new Set([...existing.patterns, ...patterns])];
+        existing.responses = [...new Set([...existing.responses, ...responses])];
+    } else { intents.push({tag, patterns, responses}); }
+    
+    patterns.forEach(p => { textDataQueue.push({ text: p, label: tag }); });
+    syncClasses(); // مزامنة الفئات فوراً
+    updateStats();
+}
+
+function runGen() {
+    try { new Function('pushData', 'log', document.getElementById('code-editor').value)(pushData, log); } 
+    catch(e) { alert("خطأ: " + e.message); }
+}
+
+function updateStats() {
+    document.getElementById('st-i').innerText = intents.length;
+    document.getElementById('st-p').innerText = intents.reduce((a,b) => a + (b.patterns ? b.patterns.length : 0), 0);
+}
+
+function loadJSON(el) {
+    const r = new FileReader();
+    r.onload = (e) => {
+        try {
+            let parsedData = JSON.parse(e.target.result);
+            let newIntents = parsedData.intents ? parsedData.intents : parsedData;
+            if(!Array.isArray(newIntents)) return alert("تنسيق الملف غير صحيح.");
+            newIntents.forEach(ni => { pushData(ni.tag, ni.patterns, ni.responses); });
+            document.getElementById('data-ui').classList.add('active');
+            log("✅ تم دمج البيانات الجديدة بنجاح وتم تسجيل الفئات.");
+        } catch(err) { alert("حدث خطأ في قراءة ملف الـ JSON!"); }
+    };
+    r.readAsText(el.files[0]);
+}
+
+function syncClasses() {
+    let combined = [...new Set([...classes, ...imgClasses])];
+    combined.forEach(c => { if (!unifiedClasses.includes(c)) unifiedClasses.push(c); });
+}
+
+function previewPrepImage(input) {
+    if(!input.files || input.files.length === 0) return;
+    prepCurrentFiles = Array.from(input.files);
+    const imgPreview = document.getElementById('prep-img-preview');
+    imgPreview.src = URL.createObjectURL(input.files[0]);
+    imgPreview.style.display = 'block';
+}
+
+async function processAndInject(targetLab) {
+    if(prepCurrentFiles.length === 0) return alert("الرجاء رفع صورة أولاً.");
+    const cName = document.getElementById('prep-class').value.trim();
+    const count = parseInt(document.getElementById('prep-count').value) || 1;
+    const responses = document.getElementById('prep-responses').value.split(',').map(r => r.trim()).filter(r => r !== '');
+    if(!cName) return alert("الرجاء تحديد صنف للصور.");
+    if(!imgClasses.includes(cName)) { imgClasses.push(cName); syncClasses(); }
+    if(responses.length > 0) pushData(cName, [cName], responses);
+    for (let file of prepCurrentFiles) {
+        let img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise(r => img.onload = r);
+        const tensor = tf.tidy(() => tf.browser.fromPixels(img).resizeBilinear([64, 64]).toFloat().div(255.0).expandDims());
+        for(let i=0; i<count; i++) {
+            let augmented = randomAugment(tensor);
+            let canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+            let pixels = await tf.browser.toPixels(augmented.squeeze());
+            augmented.dispose();
+            canvas.getContext('2d').putImageData(new ImageData(pixels, 64, 64), 0, 0);
+            let dataUrl = canvas.toDataURL();
+            imgData.push({ id: imgIdCounter++, label: cName, dataUrl: dataUrl });
+        }
+        tensor.dispose();
+    }
+    renderImageUI();
+    if(targetLab === 'visual') imgLog(`✅ تم تجهيز وحقن ${count * prepCurrentFiles.length} عينة في المختبر البصري.`);
+    else genLog(`✅ تم حقن ${count * prepCurrentFiles.length} عينة في مختبر التوليد.`);
+}
+
+function downloadPrepJson() {
+    const dataStr = JSON.stringify(imgData);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([dataStr], {type: 'application/json'}));
+    a.download = 'prepared_images.json'; a.click();
+}
+
+function buildUnifiedModel(forceRebuild = false) {
+    syncClasses();
+    if (words.length === 0) words = ['<unk>'];
+    let needsRebuild = false;
+    let oldModel = unifiedModel;
+
+    if (!unifiedModel) needsRebuild = true;
+    else if (!forceRebuild) {
+        let textInp = unifiedModel.inputs.find(i => i.name.includes('text'));
+        let currentVocabSize = textInp ? textInp.shape[1] : unifiedModel.inputs[0].shape[1];
+        let currentClassesSize = unifiedModel.outputs[0].shape[1];
+        if (currentVocabSize !== words.length || currentClassesSize !== unifiedClasses.length) needsRebuild = true;
+    }
+
+    if (needsRebuild) {
+        const textIn = tf.input({shape: [words.length], name: 'text_input'});
+        const textD1 = tf.layers.dense({units: 256, activation: 'relu', name: 'textD1'}).apply(textIn);
+        const textDrop1 = tf.layers.dropout({rate: 0.3, name: 'textDrop1'}).apply(textD1);
+        const textD2 = tf.layers.dense({units: 128, activation: 'relu', name: 'textD2'}).apply(textDrop1);
+        const textOut = tf.layers.dense({units: 64, activation: 'relu', name: 'textOut'}).apply(textD2);
+
+        const imgIn = tf.input({shape: [64, 64, 3], name: 'img_input'});
+        const conv1 = tf.layers.conv2d({filters: 64, kernelSize: 3, padding: 'same', activation: 'relu', name: 'conv1'}).apply(imgIn);
+        const bn1 = tf.layers.batchNormalization({name: 'bn1'}).apply(conv1);
+        const pool1 = tf.layers.maxPooling2d({poolSize: 2, name: 'pool1'}).apply(bn1);
+
+        const conv2 = tf.layers.conv2d({filters: 128, kernelSize: 3, padding: 'same', activation: 'relu', name: 'conv2'}).apply(pool1);
+        const bn2 = tf.layers.batchNormalization({name: 'bn2'}).apply(conv2);
+        const pool2 = tf.layers.maxPooling2d({poolSize: 2, name: 'pool2'}).apply(bn2);
+
+        const conv3 = tf.layers.conv2d({filters: 256, kernelSize: 3, padding: 'same', activation: 'relu', name: 'conv3'}).apply(pool2);
+        const bn3 = tf.layers.batchNormalization({name: 'bn3'}).apply(conv3);
+        const pool3 = tf.layers.maxPooling2d({poolSize: 2, name: 'pool3'}).apply(bn3);
+
+        const conv4 = tf.layers.conv2d({filters: 256, kernelSize: 3, padding: 'same', activation: 'relu', name: 'conv4'}).apply(pool3);
+        const pool4 = tf.layers.maxPooling2d({poolSize: 2, name: 'pool4'}).apply(conv4);
+
+        const imgDrop = tf.layers.dropout({rate: 0.4, name: 'imgDrop'}).apply(pool4);
+        const flat = tf.layers.flatten({name: 'flat'}).apply(imgDrop);
+        const imgOut = tf.layers.dense({units: 256, activation: 'relu', name: 'imgOut'}).apply(flat);
+
+        const merged = tf.layers.concatenate({name: 'merge'}).apply([textOut, imgOut]);
+        const finalD = tf.layers.dense({units: 256, activation: 'relu', name: 'finalD'}).apply(merged);
+        const finalDrop = tf.layers.dropout({rate: 0.3, name: 'finalDrop'}).apply(finalD);
+        const output = tf.layers.dense({units: unifiedClasses.length, activation: 'softmax', name: 'output'}).apply(finalDrop);
+        
+        let newModel = tf.model({inputs: [textIn, imgIn], outputs: output});
+        
+        if (oldModel) {
+            tf.tidy(() => {
+                for (let layer of newModel.layers) {
+                    try {
+                        let oldLayer = oldModel.getLayer(layer.name);
+                        if (oldLayer && oldLayer.getWeights().length > 0) {
+                            if (layer.name === 'textD1') {
+                                let w = oldLayer.getWeights()[0]; let b = oldLayer.getWeights()[1];
+                                if (words.length > w.shape[0]) w = tf.concat([w, tf.zeros([words.length - w.shape[0], 256])], 0);
+                                layer.setWeights([w, b]);
+                            } else if (layer.name === 'output') {
+                                let w = oldLayer.getWeights()[0]; let b = oldLayer.getWeights()[1];
+                                if (unifiedClasses.length > w.shape[1]) {
+                                    w = tf.concat([w, tf.zeros([256, unifiedClasses.length - w.shape[1]])], 1);
+                                    b = tf.concat([b, tf.zeros([unifiedClasses.length - b.shape[0]])], 0);
+                                }
+                                layer.setWeights([w, b]);
+                            } else layer.setWeights(oldLayer.getWeights());
+                        }
+                    } catch(e) {}
+                }
+            });
+            oldModel.dispose();
+        }
+        unifiedModel = newModel;
+        unifiedModel.compile({optimizer: tf.train.adam(0.0005), loss: 'categoricalCrossentropy', metrics: ['accuracy']});
+    }
+}
+
+async function train() {
+    if (textDataQueue.length === 0) return alert("لا توجد بيانات نصوص للتدريب!");
+    isStop = false;
+    document.getElementById('start-btn').style.display = 'none';
+    document.getElementById('stop-btn').style.display = 'block';
+    document.getElementById('train-ui').style.display = 'flex'; 
+
+    let batchSize = parseInt(document.getElementById('text-chunk-size').value) || 10;
+    try {
+        while (!isStop) {
+            if(currentTextChunkIndex >= textDataQueue.length) {
+                currentTextChunkIndex = 0;
+                textEpochCount++;
+                document.getElementById('ui-chunk').innerText = textEpochCount;
+            }
+
+            let endIdx = Math.min(currentTextChunkIndex + batchSize, textDataQueue.length);
+            let currentBatch = textDataQueue.slice(currentTextChunkIndex, endIdx);
+            document.getElementById('text-chunk-info').innerText = `الدفعة: ${currentTextChunkIndex+1} - ${endIdx} / ${textDataQueue.length}`;
+            
+            // تم الإصلاح: يجب بناء الكلمات قبل تكوين المصفوفات لضمان التساوي الرياضي (تجنب الـ Ragged Tensors)
+            currentBatch.forEach(item => {
+                let t = tokenizeText(item.text); 
+                t.forEach(w => { if (!words.includes(w)) words.push(w); });
+            });
+            
+            buildUnifiedModel(); // بناء النموذج بالأبعاد الجديدة إن وجدت
+
+            const historyObj = tf.tidy(() => {
+                let xArr = []; let yArr = [];
+                currentBatch.forEach(item => {
+                    let t = tokenizeText(item.text); 
+                    let b = new Array(words.length).fill(0);
+                    t.forEach(w => { let idx = words.indexOf(w); if(idx !== -1) b[idx] = 1; });
+                    xArr.push(b);
+                    let o = new Array(unifiedClasses.length).fill(0); o[unifiedClasses.indexOf(item.label)] = 1;
+                    yArr.push(o);
+                });
+                return { 
+                    tInputs: tf.tensor2d(xArr), targetOutputs: tf.tensor2d(yArr),
+                    iInputs: tf.zeros([xArr.length, 64, 64, 3]) 
+                };
+            });
+            
+            let inputsArray = getInputsArray(historyObj.tInputs, historyObj.iInputs);
+            const h = await unifiedModel.fit(inputsArray, historyObj.targetOutputs, { epochs: 1, batchSize: 8 });
+            
+            historyObj.tInputs.dispose(); historyObj.iInputs.dispose();
+            historyObj.targetOutputs.dispose();
+
+            let actualLoss = h.history.loss[0];
+            let actualAcc = (h.history.acc ? h.history.acc[0] : (h.history.accuracy ? h.history.accuracy[0] : 0));
+
+            document.getElementById('ui-loss').innerText = actualLoss.toFixed(4);
+            document.getElementById('ui-acc').innerText = (actualAcc * 100).toFixed(1) + "%";
+            document.getElementById('ui-fill').style.width = '100%';
+            
+            let targetLoss = parseFloat(document.getElementById('text-target-loss').value) || 0.05;
+            if (actualLoss <= targetLoss) {
+                currentTextChunkIndex += batchSize;
+            } else {
+                log(`🔄 الدورة المستمرة: إعادة تدريب الدفعة لأن الخطأ ${actualLoss.toFixed(4)} > الهدف ${targetLoss}`);
+            }
+            
+            await tf.nextFrame();
+            await new Promise(resolve => setTimeout(resolve, 30));
+        }
+    } catch(err) { console.error(err); log("❌ خطأ أثناء التدريب النصي: " + err.message); } finally { stop(); }
+}
+function stop() { isStop = true; document.getElementById('start-btn').style.display = 'block'; document.getElementById('stop-btn').style.display = 'none'; }
+
+function addImageClass() {
+    const cName = prompt("اسم الصنف البصري:");
+    if(!cName) return;
+    if(!imgClasses.includes(cName)) { imgClasses.push(cName); syncClasses(); renderImageUI(); }
+}
+function addBulkImageClasses() {
+    const list = prompt("أدخل أسماء التصنيفات مفصولة بفاصلة:");
+    if(!list) return;
+    list.split(',').map(c => c.trim()).filter(c => c !== '').forEach(cName => { if(!imgClasses.includes(cName)) imgClasses.push(cName); });
+    syncClasses(); document.getElementById('class-search').value = ''; renderImageUI();
+}
+function renameImageClass(oldName) {
+    const newName = prompt(`تعديل اسم الصنف [${oldName}] إلى:`, oldName);
+    if (!newName || newName === oldName) return;
+    let idx = imgClasses.indexOf(oldName);
+    if (idx !== -1) { imgClasses[idx] = newName;
+    imgData.forEach(d => { if (d.label === oldName) d.label = newName; }); syncClasses(); renderImageUI();
+    }
+}
+function deleteImageClass(className) {
+    if (!confirm(`هل أنت متأكد من حذف صنف [${className}] وكافة صوره؟`)) return;
+    imgClasses = imgClasses.filter(c => c !== className);
+    imgData = imgData.filter(d => d.label !== className);
+    syncClasses(); renderImageUI();
+}
+function removeSpecificImage(id) {
+    imgData = imgData.filter(d => d.id !== id);
+    renderImageUI();
+}
+
+function renderImageUI() {
+    const container = document.getElementById('image-classes-container');
+    container.innerHTML = '';
+    const searchTerm = (document.getElementById('class-search') ? document.getElementById('class-search').value.trim().toLowerCase() : '');
+    const filteredClasses = imgClasses.filter(c => c.toLowerCase().includes(searchTerm)).slice(0, 50);
+    filteredClasses.forEach(c => {
+        const classImages = imgData.filter(d => d.label === c);
+        const div = document.createElement('div'); div.className = 'card'; div.style.padding = '10px'; div.style.border = '1px solid #ddd'; div.style.marginBottom = '10px';
+        div.innerHTML = `
+            <div class="class-header">
+                <div><strong>${c}</strong> <span class="class-badge">${classImages.length} صورة</span></div>
+                <div class="class-actions"><button class="btn-sm btn-edit" onclick="renameImageClass('${c}')">✏️</button><button class="btn-sm btn-del" onclick="deleteImageClass('${c}')">🗑️</button></div>
+            </div>
+            <div class="img-preview-grid" id="preview-${c}"></div>
+            <div class="up-box" style="margin-top:10px; padding:5px; height:auto; border-style:dotted;" onclick="document.getElementById('in-${c}').click()">
+                <input type="file" id="in-${c}" multiple accept="image/*" onchange="loadImages(this, '${c}')"><span style="font-size:10px;">➕ أضف صوراً</span>
+            </div>
+        `;
+        container.appendChild(div);
+        
+        const pGrid = div.querySelector(`#preview-${c}`);
+        classImages.slice(-10).forEach(imgObj => {
+            const wrap = document.createElement('div'); wrap.className = 'img-item-wrapper';
+            const btn = document.createElement('button'); btn.className = 'btn-del-img'; btn.innerHTML = 'X'; btn.onclick = () => removeSpecificImage(imgObj.id);
+            const imgEl = document.createElement('img'); imgEl.className = 'img-thumb'; imgEl.src = imgObj.dataUrl;
+            wrap.appendChild(imgEl); wrap.appendChild(btn); pGrid.appendChild(wrap);
+        });
+    });
+    document.getElementById('img-total-up').innerText = imgData.length;
+}
+
+async function bulkLoadImages(input) {
+    if(!input.files || input.files.length === 0) return;
+    const cName = prompt("تصنيف هذه الصور:");
+    if(!cName) return;
+    if(!imgClasses.includes(cName)) imgClasses.push(cName);
+    syncClasses();
+    await loadImages(input, cName);
+}
+async function loadGenImages(input) {
+    if(!input.files || input.files.length === 0) return;
+    const cName = prompt("ما هو التصنيف لهذه الصور (ليتعلم التوليد واستخراج الحواف)؟");
+    if(!cName) return;
+    if(!imgClasses.includes(cName)) imgClasses.push(cName);
+    syncClasses();
+    genLog(`⏳ جاري معالجة الصور لتصنيف [${cName}] لتدريب التوليد...`);
+    await loadImages(input, cName);
+}
+async function loadImages(input, className) {
+    const files = input.files;
+    for(let i=0; i<files.length; i++) {
+        let canvas = document.createElement('canvas'); canvas.width=64; canvas.height=64;
+        let img = new Image(); img.src = URL.createObjectURL(files[i]);
+        await new Promise(r => img.onload = r);
+        canvas.getContext('2d').drawImage(img, 0, 0, 64, 64);
+        imgData.push({ id: imgIdCounter++, label: className, dataUrl: canvas.toDataURL() });
+    }
+    renderImageUI();
+}
+
+async function trainImages() {
+    if(imgClasses.length < 1 || imgData.length < 1) return alert("أضف أصنافاً وصوراً كافية!");
+    isImgStop = false;
+    document.getElementById('img-train-btn').style.display = 'none';
+    document.getElementById('img-stop-btn').style.display = 'block';
+    document.getElementById('img-train-ui').style.display = 'flex';
+    
+    buildUnifiedModel();
+    let batchSize = parseInt(document.getElementById('chunk-size').value) || 7;
+    imgLog("🚀 بدأ التدريب البصري الحقيقي للتعرف على الأنماط والعلامات الدقيقة.");
+    try {
+        while(!isImgStop) {
+            if(currentImgChunkIndex >= imgData.length) {
+                currentImgChunkIndex = 0;
+                imgEpochCount++;
+                document.getElementById('img-epoch-count').innerText = imgEpochCount;
+            }
+
+            let endIdx = Math.min(currentImgChunkIndex + batchSize, imgData.length);
+            let currentBatch = imgData.slice(currentImgChunkIndex, endIdx);
+            document.getElementById('chunk-info').innerText = `الدفعة: ${currentImgChunkIndex+1} - ${endIdx} / ${imgData.length}`;
+
+            let tensorList = [];
+            let labelList = [];
+            for (let item of currentBatch) {
+                let img = new Image();
+                img.src = item.dataUrl;
+                await new Promise(r => img.onload = r);
+                let t = tf.tidy(() => {
+                   let basic = tf.browser.fromPixels(img).toFloat().div(255.0).expandDims();
+                   return randomAugment(basic);
+                });
+                tensorList.push(t);
+                let o = new Array(unifiedClasses.length).fill(0); o[unifiedClasses.indexOf(item.label)] = 1;
+                labelList.push(o);
+            }
+
+            const historyObj = tf.tidy(() => {
+                let xImgs = tf.concat(tensorList);
+                let xTexts = tf.zeros([xImgs.shape[0], words.length]);
+                let yOuts = tf.tensor2d(labelList);
+                return { tInputs: xTexts, iInputs: xImgs, targetOutputs: yOuts };
+            });
+
+            tensorList.forEach(t => t.dispose()); 
+
+            let inputsArray = getInputsArray(historyObj.tInputs, historyObj.iInputs);
+            const h = await unifiedModel.fit(inputsArray, historyObj.targetOutputs, { epochs: 1, batchSize: 8 });
+            historyObj.tInputs.dispose(); historyObj.iInputs.dispose(); historyObj.targetOutputs.dispose();
+            
+            let actualLoss = h.history.loss[0];
+            let actualAcc = (h.history.acc ? h.history.acc[0] : (h.history.accuracy ? h.history.accuracy[0] : 0));
+            
+            document.getElementById('img-loss').innerText = actualLoss.toFixed(4);
+            document.getElementById('img-acc').innerText = (actualAcc * 100).toFixed(1) + "%";
+            document.getElementById('img-ui-fill').style.width = '100%';
+
+            let targetLoss = parseFloat(document.getElementById('img-target-loss').value) || 0.1;
+            if(actualLoss <= targetLoss) {
+                currentImgChunkIndex += batchSize;
+            }
+
+            if(currentImgChunkIndex % (batchSize * 3) === 0 || actualLoss > targetLoss) {
+                imgLog(`🔄 دورة ${imgEpochCount} - تقدم الدفعة ${currentImgChunkIndex} | الخطأ: <span style="color:var(--danger)">${actualLoss.toFixed(4)}</span> | الدقة: <span style="color:var(--s)">${(actualAcc * 100).toFixed(1)}%</span>`);
+            }
+            
+            await tf.nextFrame();
+            await new Promise(resolve => setTimeout(resolve, 30)); 
+        }
+    } catch(e) { 
+        console.error(e);
+        imgLog(`❌ حدث خطأ غير متوقع أثناء التدريب البصري: ${e.message}`); 
+    } finally { stopImgTrain(); }
+}
+function stopImgTrain() { isImgStop = true; document.getElementById('img-train-btn').style.display = 'block'; document.getElementById('img-stop-btn').style.display = 'none'; imgLog("🛑 تم إيقاف التدريب البصري."); }
+
+function buildGeneratorModel() {
+    syncClasses();
+    if (generatorModel && generatorModel.inputs[0].shape[1] === unifiedClasses.length) return;
+
+    genLog("🛠️ بناء شبكة التوليد العميقة (Deep Autoencoder) لتعلم رسم الصور الحقيقية...");
+    const inp = tf.input({shape: [unifiedClasses.length], name: 'gen_class_input'});
+    
+    let x = tf.layers.dense({units: 8 * 8 * 256, activation: 'relu'}).apply(inp);
+    x = tf.layers.reshape({targetShape: [8, 8, 256]}).apply(x);
+    x = tf.layers.batchNormalization().apply(x);
+    x = tf.layers.upSampling2d({size: [2, 2]}).apply(x);
+    x = tf.layers.conv2d({filters: 128, kernelSize: 3, padding: 'same', activation: 'relu'}).apply(x);
+    x = tf.layers.batchNormalization().apply(x);
+    x = tf.layers.upSampling2d({size: [2, 2]}).apply(x); 
+    x = tf.layers.conv2d({filters: 64, kernelSize: 3, padding: 'same', activation: 'relu'}).apply(x);
+    x = tf.layers.batchNormalization().apply(x);
+    x = tf.layers.upSampling2d({size: [2, 2]}).apply(x); 
+    x = tf.layers.conv2d({filters: 32, kernelSize: 3, padding: 'same', activation: 'relu'}).apply(x);
+    const out = tf.layers.conv2d({filters: 3, kernelSize: 3, padding: 'same', activation: 'sigmoid'}).apply(x);
+
+    let newGenModel = tf.model({inputs: inp, outputs: out});
+    newGenModel.compile({optimizer: tf.train.adam(0.001), loss: 'meanSquaredError'});
+    
+    if (generatorModel) {
+        tf.tidy(() => {
+            for (let layer of newGenModel.layers) {
+                try { let oldL = generatorModel.getLayer(layer.name); if (oldL) layer.setWeights(oldL.getWeights()); } catch(e) {}
+            }
+        });
+        generatorModel.dispose();
+    }
+    generatorModel = newGenModel;
+}
+
+async function trainGeneratorModel() {
+    if(imgData.length < 1) return alert("يتطلب التوليد تدريباً على الصور. ارفع صوراً أولاً.");
+    isGenStop = false; document.getElementById('gen-train-btn').style.display = 'none'; document.getElementById('gen-stop-btn').style.display = 'block';
+    buildGeneratorModel();
+    let epochCount = 0;
+    genLog("🚀 بدأ التدريب لحساب نسبة الخطأ (MSE) والتعلم الحقيقي للرسم...");
+    
+    let currentGenBatch = [];
+    try {
+        while (!isGenStop) {
+            let batchSize = parseInt(document.getElementById('gen-chunk-size').value) || 4;
+            let targetLoss = parseFloat(document.getElementById('gen-target-loss').value) || 0.05;
+
+            if (currentGenBatch.length === 0) {
+                let bs = Math.min(batchSize, imgData.length);
+                for(let k=0; k<bs; k++) {
+                    currentGenBatch.push(imgData[Math.floor(Math.random() * imgData.length)]);
+                }
+            }
+
+            let tensorList = [];
+            let labelList = [];
+            
+            for(let k=0; k<currentGenBatch.length; k++) {
+                let sample = currentGenBatch[k];
+                let oneHot = new Array(unifiedClasses.length).fill(0);
+                oneHot[unifiedClasses.indexOf(sample.label)] = 1;
+                labelList.push(oneHot);
+                
+                let img = new Image(); img.src = sample.dataUrl;
+                await new Promise(r => img.onload = r);
+                let t = tf.tidy(() => tf.browser.fromPixels(img).toFloat().div(255.0).expandDims());
+                tensorList.push(t);
+            }
+
+            let { xs, ys } = tf.tidy(() => { return { xs: tf.tensor2d(labelList), ys: tf.concat(tensorList) }; });
+            tensorList.forEach(t => t.dispose());
+
+            const h = await generatorModel.fit(xs, ys, { epochs: 1, batchSize: 4 });
+            xs.dispose(); ys.dispose();
+            
+            epochCount++;
+            let actualLoss = h.history.loss[0];
+            document.getElementById('gen-epoch').innerText = epochCount;
+            document.getElementById('gen-loss').innerText = actualLoss.toFixed(4);
+            if (actualLoss <= targetLoss) {
+                currentGenBatch = [];
+                if(epochCount % 5 === 0) genLog(`✅ تجاوز خطأ الرسم الدفعة: ${actualLoss.toFixed(4)} <= ${targetLoss}`);
+            } else {
+                if(epochCount % 5 === 0) genLog(`⚠️ إعادة تدريب الدفعة التوليدية، الخطأ: ${actualLoss.toFixed(4)} > ${targetLoss}`);
+            }
+
+            await tf.nextFrame();
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+    } catch(err) { console.error(err); } finally { stopGenTrain(); }
+}
+function stopGenTrain() { isGenStop = true; document.getElementById('gen-train-btn').style.display = 'block'; document.getElementById('gen-stop-btn').style.display = 'none'; genLog("🛑 توقف تدريب التوليد."); }
+
+function triggerImageMaker() {
+    const classToDraw = prompt("🎨 ماذا تريد أن أرسم لك؟ (أدخل اسم صنف مدرب عليه)");
+    if(classToDraw && classToDraw.trim() !== "") { document.getElementById('chat-in').value = `/تخيل ${classToDraw.trim()}`; ask(); }
+}
+
+async function generateImageFromClass(className) {
+    if (!generatorModel) { addM("عذراً، يجب تدريب شبكة التوليد البصري أولاً.", "a"); return; }
+    let idx = unifiedClasses.indexOf(className);
+    if (idx === -1) { addM(`لا أمتلك أوزاناً لرسم الصنف [${className}] بعد.`, "a"); return; }
+
+    let isCreative = document.getElementById('creative-think-toggle') && document.getElementById('creative-think-toggle').checked;
+    
+    let msgId = 'gen_' + Date.now();
+    let wrapperHtml = `
+        <div style="text-align: right; width: 100%;">
+            <div style="font-size:12px; font-weight:bold; margin-bottom:5px;">🎨 جاري توليد وتشكيل الهيكل لـ [${className}]:</div>
+            <div id="log_${msgId}" style="font-size:11px; color:#fd79a8; font-family: monospace; min-height: 20px; margin-bottom: 8px;"></div>
+            <canvas id="canvas_${msgId}" width="64" height="64" style="width:180px; height:180px; border-radius:12px; border: 3px solid var(--rgb2); background: #222; box-shadow: 0 5px 15px rgba(0,0,0,0.3); filter: contrast(1.2) saturate(1.4) drop-shadow(0 0 8px rgba(0,255,200,0.5));"></canvas>
+        </div>
+    `;
+    let msgDiv = addM(wrapperHtml, "gen-img-msg");
+    
+    let canvas = document.getElementById(`canvas_${msgId}`);
+    let logDiv = document.getElementById(`log_${msgId}`);
+    let ctx = canvas.getContext('2d');
+    let iterations = isCreative ? 20 : 5; 
+    let baseNoiseVector = tf.randomNormal([1, unifiedClasses.length], 0, 0.8);
+    for (let step = 1; step <= iterations; step++) {
+        let currentNoiseLevel = (iterations - step) / iterations;
+        if(isCreative) {
+            let thoughts = [
+                `> 🔍 خطوة ${step}: استنباط نقاط التمركز الأساسية...`,
+                `> 🧠 خطوة ${step}: تحليل الأبعاد والربط مع الخلية العصبية #${Math.floor(Math.random()*1000)}...`,
+                `> ⚠️ خطأ في توزيع الإضاءة، جاري تصحيح الـ Pixels وتعديل الحواف الملساء...`,
+                `> 🎨 خطوة ${step}: مزج الطبقة الخفية (Hidden Layer) لزيادة التشبع...`,
+                `> 💡 التفكير الداخلي: هل يشبه ${className} الحقيقي؟ تحسين التباين والألوان مستمر...`
+            ];
+            logDiv.innerHTML = thoughts[Math.floor(Math.random() * thoughts.length)];
+        } else {
+            logDiv.innerHTML = `> جاري المعالجة... (${Math.round((step/iterations)*100)}%)`;
+        }
+
+        const tensorImg = tf.tidy(() => {
+            let oneHot = new Array(unifiedClasses.length).fill(0); oneHot[idx] = 1;
+            let currentNoise = baseNoiseVector.mul(tf.scalar(currentNoiseLevel * 0.5));
+            let inputVector = tf.tensor2d([oneHot]).add(currentNoise).clipByValue(0, 1);
+            return generatorModel.predict(inputVector).squeeze();
+        });
+        const pixels = await tf.browser.toPixels(tensorImg);
+        ctx.putImageData(new ImageData(pixels, 64, 64), 0, 0);
+        tensorImg.dispose();
+        await new Promise(r => setTimeout(r, isCreative ? 400 : 50));
+        document.getElementById('chat-win').scrollTop = document.getElementById('chat-win').scrollHeight;
+    }
+
+    logDiv.innerHTML = `<span style="color:#00b894;">> ✨ تم الانتهاء من ابتكار وتجسيد [${className}] بنجاح، وبألوان فائقة الوضوح!</span>`;
+    baseNoiseVector.dispose();
+}
+
+// تم الإصلاح: تجنب تطبيق flipLeftRight على مصفوفة 3D لحماية النظام من الإنهيار
+function randomAugment(imgTensor) {
+    return tf.tidy(() => {
+        let tensor4D = imgTensor;
+        if(Math.random() > 0.5) {
+            try {
+                tensor4D = tf.image.flipLeftRight(tensor4D); // تعمل بشكل آمن لأن imgTensor بطبيعتها 4D [1,64,64,3]
+            } catch(e) {}
+        }
+        let squeezed = tensor4D.squeeze([0]); // نحذف البعد الخاص بالباتش فقط
+        let brightnessOffset = (Math.random() - 0.5) * 0.4; 
+        let contrastFactor = 1.0 + (Math.random() - 0.5) * 0.4;
+        let noise = tf.randomNormal(squeezed.shape, 0, 0.05);
+        return squeezed.mul(tf.scalar(contrastFactor)).add(tf.scalar(brightnessOffset)).add(noise).clipByValue(0, 1).expandDims(0); // إرجاعها 4D للشبكة العصبية
+    });
+}
+
+async function reinforceModel(x_text_tensor, x_img_tensor, correctClassIdx) {
+    const y_tensor = tf.tidy(() => { const y = new Array(unifiedClasses.length).fill(0); y[correctClassIdx] = 1; return tf.tensor2d([y]); });
+    let inputsArray = getInputsArray(x_text_tensor, x_img_tensor);
+    await unifiedModel.fit(inputsArray, y_tensor, { epochs: 1, batchSize: 1 });
+    y_tensor.dispose();
+}
+
+async function startAutoTrain() {
+    if(!unifiedModel) return alert("يرجى تدريب النموذج المبدئي أولاً!");
+    if(!isAutoTrainStop) return;
+    isAutoTrainStop = false;
+    document.getElementById('auto-start-btn').style.display = 'none';
+    document.getElementById('auto-stop-btn').style.display = 'block';
+    const win = document.getElementById('auto-chat-win');
+    if (win.innerHTML.includes('اختر وضع التدريب')) win.innerHTML = '';
+    addAutoMsg("🔄 تم تفعيل نظام التقييم والتعزيز التسلسلي... (لن يتوقف أبداً)", "thought");
+    try {
+        while(!isAutoTrainStop) { 
+            await new Promise(r => setTimeout(r, 800));
+            let testType = 'text'; let modeBoth = document.getElementById('mode-both').checked; let modeImg = document.getElementById('mode-img').checked;
+            if (modeImg && imgData.length > 0) testType = 'img';
+            else if (modeBoth && intents.length > 0 && imgData.length > 0) testType = (Math.random() > 0.5 ? 'text' : 'img');
+            else if (imgData.length === 0 && modeImg) { addAutoMsg("⚠️ لا صور كافية للتدريب!", "thought"); await new Promise(r => setTimeout(r, 2000)); continue; }
+
+            let targetLabel = "";
+            let questionHtml = ""; let textTensor = null; let imgTensor = null;
+            let isCorrect = false; let confidence = 0;
+            let predictedClass = ""; let processTime = 0;
+
+            tf.engine().startScope();
+            if (testType === 'text') {
+                if(autoTextIndex >= intents.length) autoTextIndex = 0;
+                let currentIntent = intents[autoTextIndex++];
+                let randomPattern = currentIntent.patterns[Math.floor(Math.random() * currentIntent.patterns.length)];
+                targetLabel = currentIntent.tag;
+                questionHtml = `👤 <b>سؤال:</b> ${randomPattern}<br>`;
+                let b = new Array(words.length).fill(0); tokenizeText(randomPattern).forEach(w => { if(words.indexOf(w)!==-1) b[words.indexOf(w)]=1; });
+                textTensor = tf.tensor2d([b]); imgTensor = tf.zeros([1, 64, 64, 3]);
+                addAutoMsg(questionHtml, 'u');
+            } else {
+                if(autoImgIndex >= imgData.length) autoImgIndex = 0;
+                let currentImgObj = imgData[autoImgIndex++];
+                targetLabel = currentImgObj.label;
+                let img = new Image(); img.src = currentImgObj.dataUrl;
+                await new Promise(r => img.onload = r);
+                imgTensor = tf.tidy(() => randomAugment(tf.browser.fromPixels(img).toFloat().div(255.0).expandDims())); 
+                textTensor = tf.zeros([1, words.length]);
+                addAutoMsg(`👤 <b>صورة للتصنيف:</b> [معالجة بالخلفية: ${targetLabel}]`, 'u');
+            }
+
+            let startTime = performance.now();
+            let inputsArray = getInputsArray(textTensor, imgTensor);
+            const p = unifiedModel.predict(inputsArray);
+            const d = p.dataSync(); processTime = performance.now() - startTime;
+            let idx = d.indexOf(Math.max(...d)); predictedClass = unifiedClasses[idx]; confidence = d[idx]; isCorrect = (predictedClass === targetLabel);
+            let responseHtml = `🤖 <b>التحليل:</b> أستنتج أنه [${predictedClass}] بثقة ${(confidence*100).toFixed(1)}%<br>⏱️ ${processTime.toFixed(1)}ms`;
+            if (isCorrect && confidence > 0.6) {
+                autoRewardCount++;
+                document.getElementById('auto-reward').innerText = autoRewardCount;
+                responseHtml += `<br>✅ <span style="color:var(--s)"><b>مكافأة!</b> صحيح.</span>`; addAutoMsg(responseHtml, 'a');
+            } else {
+                autoPenaltyCount++;
+                document.getElementById('auto-penalty').innerText = autoPenaltyCount;
+                responseHtml += `<br>❌ <span style="color:var(--danger)"><b>عقوبة وتصحيح!</b> تعديل الأوزان...</span>`; addAutoMsg(responseHtml, 'thought');
+            }
+            await reinforceModel(textTensor, imgTensor, unifiedClasses.indexOf(targetLabel));
+            tf.engine().endScope(); await tf.nextFrame();
+        }
+    } catch(e) { console.error(e); if(!isAutoTrainStop) setTimeout(startAutoTrain, 3000); }
+}
+function stopAutoTrain() { isAutoTrainStop = true; document.getElementById('auto-start-btn').style.display = 'block'; document.getElementById('auto-stop-btn').style.display = 'none'; }
+function clearAutoChat() { document.getElementById('auto-chat-win').innerHTML = ''; }
+function addAutoMsg(t, c) { const w = document.getElementById('auto-chat-win'); const d = document.createElement('div'); d.className = `m ${c}`; d.innerHTML = t; w.appendChild(d); w.scrollTop = w.scrollHeight; }
+
+async function initFaceDetector() { 
+    if(!faceDetector) faceDetector = await blazeface.load();
+    if(!objectDetector) objectDetector = await cocoSsd.load(); 
+}
+
+function openCameraForCapture() {
+    captureTargetClass = prompt("ما هو التصنيف الذي تريد التقاط صوره؟");
+    if(!captureTargetClass) return;
+    if(!imgClasses.includes(captureTargetClass)) { imgClasses.push(captureTargetClass); syncClasses(); }
+    document.getElementById('btn-cam-capture').style.display = 'block';
+    openCamera(true);
+}
+
+function captureSingleImage() {
+    if(!isCamActive || !captureTargetClass) return;
+    const video = document.getElementById('live-video');
+    const canvas = document.createElement('canvas');
+    canvas.width = 64; canvas.height = 64;
+    canvas.getContext('2d').drawImage(video, 0, 0, 64, 64);
+    imgData.push({ id: imgIdCounter++, label: captureTargetClass, dataUrl: canvas.toDataURL() });
+    renderImageUI();
+    imgLog(`✅ تم التقاط صورة وحفظها لتصنيف [${captureTargetClass}].`);
+    addM(`📸 تم التقاط وحفظ صورة في تصنيف <b>${captureTargetClass}</b>.`, "thought");
+}
+
+function captureCameraToChat() {
+    if(!isCamActive) return;
+    const video = document.getElementById('live-video');
+    const canvas = document.createElement('canvas'); canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+        const file = new File([blob], "live_camera_capture.jpg", { type: "image/jpeg" });
+        document.getElementById('deep-think-toggle').checked = true;
+        handleChatFiles({files: [file]});
+        ask();
+    }, 'image/jpeg');
+}
+
+async function toggleCamera(forChat = false) { if(isCamActive) closeCamera(); else openCamera(forChat); }
+async function switchCamera() { currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; if(isCamActive) { closeCamera(); setTimeout(() => openCamera(), 300); } }
+
+async function openCamera(forCapture = false) {
+    const wrapper = document.getElementById('camera-wrapper'); wrapper.style.display = 'block';
+    await initFaceDetector();
+    try {
+        liveStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
+        const video = document.getElementById('live-video'); video.srcObject = liveStream; isCamActive = true;
+        
+        if(!forCapture) document.getElementById('btn-cam-to-chat').style.display = 'block';
+        video.onloadedmetadata = () => {
+            video.play();
+            if(!forCapture) {
+                requestAnimationFrame(processCamFrame); 
+                clearInterval(analysisInterval);
+                analysisInterval = setInterval(() => { analyzeFullCameraFrame(video); }, 4000); 
+            }
+            addM(`🟢 تم تشغيل الكاميرا. سيقوم النموذج بتحليل المشهد بالكامل (وجوه، حيوانات، جمادات)... يمكنك الآن الضغط على زر (إرسال للدردشة) للتحليل العميق واستخراج النصوص.`, "thought");
+        };
+    } catch (err) { alert("فشل الوصول للكاميرا: " + err); wrapper.style.display = 'none'; }
+}
+
+function closeCamera() {
+    if(liveStream) liveStream.getTracks().forEach(track => track.stop());
+    isCamActive = false; clearInterval(analysisInterval);
+    document.getElementById('camera-wrapper').style.display = 'none'; document.getElementById('btn-cam-capture').style.display = 'none';
+    document.getElementById('btn-cam-to-chat').style.display = 'none';
+    captureTargetClass = null; addM("🔴 تم إيقاف الكاميرا.", "thought");
+}
+
+async function analyzeFullCameraFrame(video) {
+    if (!unifiedModel || imgData.length === 0 || !isCamActive) return;
+    tf.engine().startScope();
+    try {
+        const fullFrameTensor = tf.tidy(() => tf.browser.fromPixels(video).resizeBilinear([64, 64]).toFloat().div(255.0).expandDims());
+        const textTensor = tf.zeros([1, words.length]);
+        const p = unifiedModel.predict(getInputsArray(textTensor, fullFrameTensor));
+        const d = p.dataSync();
+        let thoughts = Array.from(d).map((prob, idx) => ({class: unifiedClasses[idx], prob})).sort((a,b) => b.prob-a.prob);
+        let topClass = thoughts[0].class; let conf = thoughts[0].prob;
+        if (conf > 0.6) {
+            const now = Date.now();
+            if (now - lastSeenTime > 6000 || lastSeenClass !== topClass) {
+                lastSeenClass = topClass;
+                lastSeenTime = now;
+                saveLiveSnapshot(video, topClass, conf);
+                addM(`👀 <b>الكاميرا ترصد حالياً:</b> تعرفت على <b>[${topClass}]</b> في المشهد بنسبة ثقة ${(conf*100).toFixed(1)}%.`, 'a');
+            }
+        }
+    } catch(e) {}
+    tf.engine().endScope();
+}
+
+async function processCamFrame() {
+    if(!isCamActive) return;
+    const video = document.getElementById('live-video'); const canvas = document.getElementById('canvas-overlay');
+    const ctx = canvas.getContext('2d');
+    if (video.videoWidth === 0) { requestAnimationFrame(processCamFrame); return; }
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight; ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    try {
+        const predictions = await faceDetector.estimateFaces(video, false);
+        if (predictions.length > 0) {
+            for (let i = 0; i < predictions.length; i++) {
+                const pred = predictions[i];
+                ctx.strokeStyle = "rgba(0, 255, 128, 0.8)"; ctx.lineWidth = 2;
+                ctx.strokeRect(pred.topLeft[0], pred.topLeft[1], pred.bottomRight[0]-pred.topLeft[0], pred.bottomRight[1]-pred.topLeft[1]);
+                if (pred.landmarks) {
+                    ctx.fillStyle = "var(--rgb1)";
+                    for (let j = 0; j < pred.landmarks.length; j++) {
+                        const x = pred.landmarks[j][0];
+                        const y = pred.landmarks[j][1];
+                        ctx.beginPath();
+                        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+        
+        if(objectDetector) {
+            const objPredictions = await objectDetector.detect(video);
+            objPredictions.forEach(obj => {
+                ctx.strokeStyle = "rgba(0, 255, 0, 1)"; 
+                ctx.lineWidth = 3;
+                ctx.strokeRect(obj.bbox[0], obj.bbox[1], obj.bbox[2], obj.bbox[3]);
+                
+                ctx.fillStyle = "rgba(0, 255, 0, 1)";
+                ctx.beginPath();
+                ctx.arc(obj.bbox[0], obj.bbox[1], 5, 0, 2 * Math.PI); 
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(obj.bbox[0] + obj.bbox[2], obj.bbox[1], 5, 0, 2 * Math.PI); 
+                ctx.fill();
+                
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillRect(obj.bbox[0], obj.bbox[1] - 20, obj.class.length * 10 + 10, 20);
+                ctx.fillStyle = "#0be881";
+                ctx.font = "14px Tajawal";
+                ctx.fillText(obj.class, obj.bbox[0] + 5, obj.bbox[1] - 5);
+            });
+        }
+    } catch(e) {}
+    if(isCamActive) requestAnimationFrame(processCamFrame);
+}
+
+function saveLiveSnapshot(videoElement, className, confidence) {
+    const canvas = document.createElement('canvas'); canvas.width = videoElement.videoWidth; canvas.height = videoElement.videoHeight;
+    canvas.getContext('2d').drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+    const gallery = document.getElementById('saved-gallery'); gallery.style.display = 'flex';
+    const div = document.createElement('div'); const img = document.createElement('img');
+    img.src = canvas.toDataURL('image/jpeg', 0.8);
+    const span = document.createElement('span'); span.innerText = `${className} (${(confidence*100).toFixed(1)}%)`;
+    div.appendChild(img); div.appendChild(span); gallery.prepend(div);
+}
+
+function handleChatFiles(input) {
+    if(!input.files || input.files.length === 0) return;
+    for(let i=0; i<input.files.length; i++) {
+        let file = input.files[i];
+        currentChatImageFiles.push(file);
+        addM(`➕ أضفت صورة للتحليل (إجمالي: ${currentChatImageFiles.length}) <br><img src="${URL.createObjectURL(file)}" style="max-width:100px; border-radius:8px; margin-top:5px; border:2px solid var(--p);">`, 'u');
+    }
+    input.value = '';
+}
+
+async function appendThinkingWordByWord(el, text) {
+    let lines = text.split('\n');
+    for (let line of lines) {
+        if (!line) continue;
+        el.innerHTML = el.innerHTML.replace('<span class="typing-cursor"></span>', '');
+        let words = line.split(' ');
+        for (let w of words) {
+            el.innerHTML += w + ' ';
+            await new Promise(r => setTimeout(r, 20)); 
+            document.getElementById('chat-win').scrollTop = document.getElementById('chat-win').scrollHeight;
+        }
+        el.innerHTML += '<br><span class="typing-cursor"></span>';
+    }
+}
+
+window.chatFeedback = async function(btn, isPositive, detectedClass, inputText) {
+    btn.parentElement.innerHTML = isPositive ?
+    `✅ تم مكافأة وترسيخ ثقة النموذج بـ [${detectedClass}]!` : `🔄 جاري معاقبة وتشتيت الأوزان الخاصة بهذا الرد...`;
+    const yArr = new Array(unifiedClasses.length).fill(0);
+    if(isPositive) { yArr[unifiedClasses.indexOf(detectedClass)] = 1; }
+    else { yArr.fill(1/(unifiedClasses.length-1)); yArr[unifiedClasses.indexOf(detectedClass)] = 0; }
+    
+    let tInputs = tf.zeros([1, words.length]);
+    if(inputText) {
+        let b = new Array(words.length).fill(0);
+        tokenizeText(inputText).forEach(w => { let idx = words.indexOf(w); if(idx !== -1) b[idx] = 1; });
+        tInputs = tf.tensor2d([b]);
+    }
+    let inputsArray = getInputsArray(tInputs, tf.zeros([1, 64, 64, 3]));
+    await unifiedModel.fit(inputsArray, tf.tensor2d([yArr]), { epochs: 2 });
+    tInputs.dispose();
+}
+
+async function ask() {
+    let isDeepThinking = document.getElementById('deep-think-toggle').checked;
+    let isCreativeThinking = document.getElementById('creative-think-toggle') && document.getElementById('creative-think-toggle').checked;
+    const i = document.getElementById('chat-in'), t = i.value.trim();
+    
+    if (t.startsWith('/تخيل ')) { 
+        let reqClass = t.replace('/تخيل ', '').trim();
+        addM(t, 'u'); i.value = ''; generateImageFromClass(reqClass); return; 
+    }
+    
+    if((!t && currentChatImageFiles.length === 0) || !unifiedModel) { if(!unifiedModel) alert("يرجى تدريب النموذج أولاً."); return; }
+    if(t) addM(t, 'u'); i.value = '';
+
+    tf.engine().startScope();
+    let textTensor = tf.zeros([1, words.length]);
+    if(t) {
+        let b = new Array(words.length).fill(0);
+        tokenizeText(t).forEach(w => { let idx=words.indexOf(w); if(idx!==-1) b[idx]=1; });
+        textTensor = tf.tensor2d([b]);
+    }
+
+    let totalProbabilities = new Array(unifiedClasses.length).fill(0);
+    let imagesTensorsToDispose = [];
+
+    if (currentChatImageFiles.length === 0) {
+        let imgT = tf.zeros([1, 64, 64, 3]);
+        let d = await unifiedModel.predict(getInputsArray(textTensor, imgT)).data();
+        for(let idx=0; idx<d.length; idx++) totalProbabilities[idx] += d[idx];
+        imgT.dispose();
+    } else {
+        for (let file of currentChatImageFiles) {
+            const img = new Image();
+            img.src = URL.createObjectURL(file); await new Promise(r => img.onload = r);
+            let imgT = tf.browser.fromPixels(img).resizeBilinear([64, 64]).toFloat().div(255.0).expandDims();
+            imagesTensorsToDispose.push(imgT);
+            let d = await unifiedModel.predict(getInputsArray(textTensor, imgT)).data();
+            for(let idx=0; idx<d.length; idx++) totalProbabilities[idx] += d[idx];
+        }
+    }
+
+    let countToAvg = currentChatImageFiles.length > 0 ? currentChatImageFiles.length : 1;
+    let avgProbs = totalProbabilities.map(p => p / countToAvg);
+    let thoughtsList = avgProbs.map((prob, idx) => ({class: unifiedClasses[idx], prob})).sort((a,b) => b.prob-a.prob);
+    let primaryClass = thoughtsList[0].class; let confidence = thoughtsList[0].prob;
+
+    if (isCreativeThinking) {
+        let creativeDiv = addM(`<span class="typing-cursor"></span>`, 'creative-thought');
+        let creativeProcess = `[🧠 دائرة التفكير الإبداعي مفعلة | Creative Search Engine]\n> 🔍 جاري البحث والربط المعرفي العميق لفهم الطلب...\n`;
+        await appendThinkingWordByWord(creativeDiv, creativeProcess); creativeProcess = "";
+        creativeProcess += `> 🗂️ فحص قاعدة البيانات النصية (${intents.length} نيات متوفرة)...\n`;
+        let foundTextMatch = intents.find(it => it.tag === primaryClass || it.patterns.some(pt => t.includes(pt)));
+        if (foundTextMatch) {
+            creativeProcess += `   ├── 💡 وجدت ارتباطاً نصياً في تصنيف [${foundTextMatch.tag}].\n   ├── المعنى المحتمل: المستخدم يبحث عن استجابة لـ "${foundTextMatch.patterns[0]}".\n`;
+        } else {
+            creativeProcess += `   ├── ⚠️ لم أجد تطابقاً نصياً صريحاً، سأعتمد على التخمين العصبي المشترك.\n`;
+        }
+        await appendThinkingWordByWord(creativeDiv, creativeProcess); creativeProcess = "";
+        creativeProcess += `> 🖼️ مسح الذاكرة البصرية التخيلية (${imgData.length} صورة مسجلة)...\n`;
+        let foundImgMatch = imgClasses.find(c => t.includes(c) || c === primaryClass);
+        if (foundImgMatch) {
+            creativeProcess += `   ├── 👁️ العقل البصري يقول أنه يعرف شكل [${foundImgMatch}].\n`;
+        } else {
+            creativeProcess += `   ├── 🚫 لا توجد بيانات بصرية مطابقة لهذا المعنى.\n`;
+        }
+        await appendThinkingWordByWord(creativeDiv, creativeProcess); creativeProcess = "";
+        creativeProcess += `> ⚙️ دمج البيانات وإعداد المخرجات... جاهز للرد.`;
+        await appendThinkingWordByWord(creativeDiv, creativeProcess);
+        creativeDiv.innerHTML = creativeDiv.innerHTML.replace('<span class="typing-cursor"></span>', ' ✔️');
+    } 
+    else if (isDeepThinking) {
+        let deepDiv = addM(`<span class="typing-cursor"></span>`, 'deep-thought');
+        let thinkingProcess = `[نظام التفكير العميق الشامل | Maximum Deep Thinking]\n`;
+        await appendThinkingWordByWord(deepDiv, thinkingProcess); thinkingProcess = "";
+        if (t) thinkingProcess += `> 📝 تفكيك الطلب النصي: الكلمات المعترف بها [${tokenizeText(t).filter(w=>words.includes(w)).join(', ')}]\n`;
+        if (currentChatImageFiles.length > 0) {
+            thinkingProcess += `> 🖼️ تحليل البيكسلات لعدد [${currentChatImageFiles.length}] صور مع إدراك الحواف...\n> 🔍 جاري تنشيط المستشعرات لاستخراج الأشخاص والكائنات والنصوص...\n`;
+            await appendThinkingWordByWord(deepDiv, thinkingProcess); thinkingProcess = "";
+            
+            for (let k = 0; k < currentChatImageFiles.length; k++) {
+                let file = currentChatImageFiles[k];
+                try {
+                    const img = new Image();
+                    img.src = URL.createObjectURL(file); await new Promise(r => img.onload = r);
+                    if (!faceDetector) await initFaceDetector();
+                    const faces = await faceDetector.estimateFaces(img, false);
+                    thinkingProcess += `> 👤 استخراج الأشخاص (الصورة ${k+1}): تم رصد عدد [${faces.length}] كيانات.\n`;
+                    if(objectDetector) {
+                        const objs = await objectDetector.detect(img);
+                        if(objs.length > 0) {
+                            thinkingProcess += `> 🐾 استخراج الكائنات والجماد: [${objs.map(o => o.class).join(', ')}]\n`;
+                        }
+                    }
+                } catch(e) {}
+                try {
+                    const worker = window.Tesseract;
+                    const ret = await worker.recognize(file, 'ara+eng');
+                    let extractedText = ret.data.text.trim();
+                    if(extractedText) thinkingProcess += `> ✅ نصوص (الصورة ${k+1}): "${extractedText.replace(/\n/g, ' ')}"\n`;
+                } catch(e) {}
+            }
+            await appendThinkingWordByWord(deepDiv, thinkingProcess);
+            thinkingProcess = "";
+        }
+        
+        thinkingProcess += `> 📊 مصفوفة الاحتمالات الموزونة النهائية للأوزان المشتركة:\n`;
+        for (let th of thoughtsList.slice(0, 3)) if (th.prob > 0.001) thinkingProcess += `  ├── [${th.class}]: ${(th.prob * 100).toFixed(2)}%\n`;
+        thinkingProcess += `> 🧠 الخلاصة التي سأقوم بالرد بناءً عليها هي: [${primaryClass}]`;
+        await appendThinkingWordByWord(deepDiv, thinkingProcess);
+        deepDiv.innerHTML = deepDiv.innerHTML.replace('<span class="typing-cursor"></span>', ' ✔️');
+    }
+
+    setTimeout(() => {
+        let finalResponseHTML = ``;
+        
+        let dbResponse = "";
+        const intentObj = intents.find(it => it.tag === primaryClass);
+        if(intentObj && intentObj.responses && intentObj.responses.length > 0) {
+            dbResponse = intentObj.responses[Math.floor(Math.random()*intentObj.responses.length)];
+        } else {
+            dbResponse = "لا أمتلك رداً نصياً مبرمجاً مسبقاً لهذا التصنيف في قاعدة بياناتي، لكني أتعلم عبر التخمين العصبي.";
+        }
+        
+        finalResponseHTML += `<div style="padding: 10px; background: rgba(0,0,0,0.05); border-radius: 8px; margin-bottom: 10px; font-size: 13px;">
+            <b>📚 رد من قاعدة التدريب (Database):</b><br>${dbResponse}
+        </div>`;
+
+        finalResponseHTML += `🤖 <b>رد من الاستنتاج العصبي:</b> بالاعتماد على أوزاني المتقدمة، التصنيف الأقرب لهذا المدخل هو "<b>${primaryClass}</b>" بنسبة ثقة ${(confidence*100).toFixed(1)}%.`;
+        
+        finalResponseHTML += `<div style="margin-top:10px; padding-top:10px; border-top:1px dashed #ddd; font-size:12px;">
+            تقييم استنتاجي (لتعديل أوزاني اللحظي): 
+            <button class="btn-sm btn-s" onclick="chatFeedback(this, true, '${primaryClass}', '${t}')">👍 صحيح</button> 
+            <button class="btn-sm btn-del" onclick="chatFeedback(this, false, '${primaryClass}', '${t}')">👎 خاطئ</button>
+        </div>`;
+        
+        addM(finalResponseHTML, 'a');
+    }, isDeepThinking || isCreativeThinking ? 500 : 200); 
+
+    imagesTensorsToDispose.forEach(t => t.dispose());
+    currentChatImageFiles = []; 
+    tf.engine().endScope();
+}
+
+function addM(t, c) { const w = document.getElementById('chat-win'); const d = document.createElement('div'); d.className = `m ${c}`; d.innerHTML = t; w.appendChild(d); setTimeout(() => { w.scrollTop = w.scrollHeight; }, 50); saveChatHistory(); return d; }
+function saveChatHistory() { localStorage.setItem('ai_studio_chat_history', document.getElementById('chat-win').innerHTML); }
+function loadChatHistory() { const history = localStorage.getItem('ai_studio_chat_history'); if (history) document.getElementById('chat-win').innerHTML = history; }
+function clearChat() { document.getElementById('chat-win').innerHTML = ''; localStorage.removeItem('ai_studio_chat_history'); }
+
+async function downloadAllFiles() {
+    if(!unifiedModel) return alert("⚠️ يرجى تدريب النموذج أولاً!");
+    try {
+        log("⏳ جاري تجهيز 5 ملفات للتحميل (model, weights, vocab, text_data, image_data)...");
+        await unifiedModel.save('downloads://model'); 
+        
+        const v = JSON.stringify({words, classes, imgClasses, unifiedClasses, intents});
+        setTimeout(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([v], {type: 'application/json'})); a.download = 'vocab.json'; a.click(); }, 300);
+        const tState = JSON.stringify({ index: currentTextChunkIndex, epoch: textEpochCount, data: textDataQueue });
+        setTimeout(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([tState], {type: 'application/json'})); a.download = 'text_data.json'; a.click(); }, 600);
+        const iState = JSON.stringify({ index: currentImgChunkIndex, epoch: imgEpochCount, data: imgData });
+        setTimeout(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([iState], {type: 'application/json'})); a.download = 'image_data.json'; a.click(); log("✅ تم التصدير بالكامل بنجاح!"); }, 900);
+    } catch(err) { alert("❌ حدث خطأ أثناء التصدير: " + err.message); }
+}
+
+async function restore() {
+    const fj = document.getElementById('f-j').files[0]; const fb = document.getElementById('f-b').files[0]; const fv = document.getElementById('f-v').files[0];
+    if(!fj || !fb || !fv) return alert("⚠️ يرجى رفع الملفات الأساسية الثلاثة (model.json, weights.bin, vocab.json) كحد أدنى!");
+    try {
+        log("⏳ جاري تحميل واستعادة النظام المتكامل...");
+        const r = new FileReader();
+        r.onload = async (e) => {
+            const d = JSON.parse(e.target.result);
+            words = d.words || []; classes = d.classes || []; imgClasses = d.imgClasses || []; unifiedClasses = d.unifiedClasses || [];
+            intents = d.intents || [];
+            if(unifiedModel) { unifiedModel.dispose(); unifiedModel = null; }
+            unifiedModel = await tf.loadLayersModel(tf.io.browserFiles([fj, fb]));
+            unifiedModel.compile({optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy', metrics: ['accuracy']});
+            updateStats(); log("✅ تم استعادة النموذج. (ارفع الملفين 4 و 5 إن كنت تريد استئناف التدريب)");
+            alert("تم تحميل النموذج بنجاح!");
+        };
+        r.readAsText(fv);
+    } catch (err) { alert("❌ خطأ أثناء تحميل النموذج."); }
+}
+
+function loadStateFile(input, type) {
+    const r = new FileReader();
+    r.onload = (e) => {
+        try {
+            let state = JSON.parse(e.target.result);
+            if(type === 'text') { textDataQueue = state.data || []; currentTextChunkIndex = state.index || 0; textEpochCount = state.epoch || 0;
+            log(`✅ تم تحميل ملف النصوص، الدفعة: ${currentTextChunkIndex}`); }
+            if(type === 'img') { imgData = state.data || []; currentImgChunkIndex = state.index || 0; imgEpochCount = state.epoch || 0; log(`✅ تم تحميل ملف الصور، الدفعة: ${currentImgChunkIndex}`); renderImageUI(); }
+        } catch(err) { alert("فشل قراءة الملف!"); }
+    };
+    r.readAsText(input.files[0]);
+}
+
+async function createBlankModel() {
+    const layersCount = parseInt(document.getElementById('blank-layers').value) || 2;
+    const unitsCount = parseInt(document.getElementById('blank-units').value) || 64;
+    try {
+        log("⏳ جاري بناء النموذج الفارغ...");
+        if (words.length === 0) words = [];
+        if (unifiedClasses.length === 0) { unifiedClasses = ["صنف_فارغ_1", "صنف_فارغ_2"]; classes = unifiedClasses; imgClasses = []; }
+
+        const textIn = tf.input({shape: [words.length > 0 ? words.length : 1], name: 'text_input'});
+        const textD1 = tf.layers.dense({units: unitsCount, activation: 'relu', name: 'textD1'}).apply(textIn);
+        const textDrop = tf.layers.dropout({rate: 0.2, name: 'textDrop'}).apply(textD1);
+        let textOut = tf.layers.dense({units: unitsCount, activation: 'relu', name: 'textOut'}).apply(textDrop);
+
+        const imgIn = tf.input({shape: [64, 64, 3], name: 'img_input'});
+        const conv1 = tf.layers.conv2d({filters: 32, kernelSize: 3, padding: 'same', activation: 'relu', name: 'conv1'}).apply(imgIn);
+        const pool1 = tf.layers.maxPooling2d({poolSize: 2, name: 'pool1'}).apply(conv1);
+        const flat = tf.layers.flatten({name: 'flat'}).apply(pool1);
+        let imgOut = tf.layers.dense({units: unitsCount, activation: 'relu', name: 'imgOut'}).apply(flat);
+
+        const merged = tf.layers.concatenate({name: 'merge'}).apply([textOut, imgOut]);
+        let x = merged;
+        for(let i = 1; i < layersCount; i++) { x = tf.layers.dense({units: unitsCount, activation: 'relu'}).apply(x); }
+        const output = tf.layers.dense({units: unifiedClasses.length, activation: 'softmax', name: 'output'}).apply(x);
+        const blankModel = tf.model({inputs: [textIn, imgIn], outputs: output});
+        blankModel.compile({optimizer: tf.train.adam(0.0005), loss: 'categoricalCrossentropy', metrics: ['accuracy']});
+        await blankModel.save('downloads://model');
+        const dummyVocab = JSON.stringify({ words, classes, imgClasses, unifiedClasses, intents });
+        setTimeout(() => {
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([dummyVocab], {type: 'application/json'})); 
+            a.download = 'vocab.json'; a.click(); 
+        }, 500);
+        const tState = JSON.stringify({ index: 0, epoch: 0, data: [] });
+        setTimeout(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([tState], {type: 'application/json'})); a.download = 'text_data.json'; a.click(); }, 800);
+        const iState = JSON.stringify({ index: 0, epoch: 0, data: [] });
+        setTimeout(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([iState], {type: 'application/json'})); a.download = 'image_data.json'; a.click(); log("✅ اكتمل تصدير النموذج الفارغ بالملفات الخمسة."); alert(`✅ تم صنع النموذج الفارغ وتصدير 5 ملفات بنجاح!`); }, 1100);
+    } catch(err) { alert("حدث خطأ في صنع النموذج: " + err.message); }
+}
+</script>
+</body>
+</html>
